@@ -1,0 +1,288 @@
+esphome:
+  name: garage-controller
+
+esp8266:
+  board: nodemcuv2
+  framework:
+    version: recommended
+
+switch:
+  - platform: template
+    name: "Main Garage Virtual Lock"
+    id: main_garage_virtual_lock
+    optimistic: true
+    internal: true
+
+  - platform: gpio
+    id: main_door_relay
+    name: "Main Garage Door"
+    restore_mode: RESTORE_DEFAULT_OFF
+    internal: true
+    pin:
+      number: D3
+    on_turn_on:
+      - delay: 250ms
+      - switch.turn_off: main_door_relay
+
+  - platform: template
+    name: "Side Garage Virtual Lock"
+    id: side_garage_virtual_lock
+    optimistic: true
+    internal: true
+
+  - platform: gpio
+    id: side_door_relay
+    name: "Side Garage Door"
+    restore_mode: RESTORE_DEFAULT_OFF
+    internal: true
+    pin:
+      number: D7
+    on_turn_on:
+      - delay: 250ms
+      - switch.turn_off: side_door_relay
+
+binary_sensor:
+  - platform: template
+    name: "Main Garage Door Jammed"
+    id: main_garage_is_jammed
+    device_class: problem
+
+  - platform: template
+    name: "Main Garage Door Open"
+    id: main_garage_is_open
+    device_class: garage_door
+
+  - platform: gpio
+    pin:
+      number: D1
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Main Garage Door Close Sensor"
+    id: main_garage_close_endstop_binary_sensor
+    internal: false
+    on_press:
+       - cover.template.publish:
+          id: main_garage_door
+          state: CLOSED
+          current_operation: IDLE
+       - binary_sensor.template.publish:
+          id: main_garage_is_jammed
+          state: OFF
+       - binary_sensor.template.publish:
+          id: main_garage_is_open
+          state: OFF
+    on_release:
+      - cover.template.publish:
+          id: main_garage_door
+          current_operation: OPENING
+      - binary_sensor.template.publish:
+          id: main_garage_is_open
+          state: ON
+      - delay: 25s
+      - if:
+          condition:
+            binary_sensor.is_off: main_garage_open_endstop_binary_sensor
+          then:
+            - binary_sensor.template.publish:
+                id: main_garage_is_jammed
+                state: ON
+
+  - platform: gpio
+    pin:
+      number: D2
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Main Garage Door Open Sensor"
+    id: main_garage_open_endstop_binary_sensor
+    internal: false
+    on_press:
+      - cover.template.publish:
+          id: main_garage_door
+          state: OPEN
+          current_operation: IDLE
+      - binary_sensor.template.publish:
+          id: main_garage_is_jammed
+          state: OFF
+    on_release:
+      - cover.template.publish:
+          id: main_garage_door
+          current_operation: CLOSING
+      - delay: 25s
+      - if:
+          condition:
+            binary_sensor.is_off: main_garage_close_endstop_binary_sensor
+          then:
+            - binary_sensor.template.publish:
+                id: main_garage_is_jammed
+                state: ON
+
+  - platform: template
+    name: "Side Garage Door Jammed"
+    id: side_garage_is_jammed
+    device_class: problem
+
+  - platform: template
+    name: "Side Garage Door Open"
+    id: side_garage_is_open
+    device_class: garage_door
+
+  - platform: gpio
+    pin:
+      number: D5
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Side Garage Door Close Sensor"
+    id: side_garage_close_endstop_binary_sensor
+    internal: false
+    on_press:
+      - cover.template.publish:
+          id: side_garage_door
+          state: CLOSED
+          current_operation: IDLE
+      - binary_sensor.template.publish:
+          id: side_garage_is_jammed
+          state: OFF
+      - binary_sensor.template.publish:
+          id: side_garage_is_open
+          state: OFF
+    on_release:
+      - cover.template.publish:
+          id: side_garage_door
+          current_operation: OPENING
+      - binary_sensor.template.publish:
+          id: side_garage_is_open
+          state: ON
+      - delay: 25s
+      - if:
+          condition:
+            binary_sensor.is_off: side_garage_open_endstop_binary_sensor
+          then:
+            - binary_sensor.template.publish:
+                id: side_garage_is_jammed
+                state: ON
+
+  - platform: gpio
+    pin:
+      number: D6
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Side Garage Door Open Sensor"
+    id: side_garage_open_endstop_binary_sensor
+    internal: false
+    on_press:
+      - cover.template.publish:
+          id: side_garage_door
+          state: OPEN
+          current_operation: IDLE
+      - binary_sensor.template.publish:
+          id: side_garage_is_jammed
+          state: OFF
+    on_release:
+      - cover.template.publish:
+          id: side_garage_door
+          current_operation: CLOSING
+      - delay: 25s
+      - if:
+          condition:
+            binary_sensor.is_off: side_garage_close_endstop_binary_sensor
+          then:
+            - binary_sensor.template.publish:
+                id: side_garage_is_jammed
+                state: ON
+
+cover:
+  - platform: template
+    id: main_garage_door
+    name: "Main Garage Door"
+    device_class: garage
+    open_action:
+      - if:
+          condition:
+            - and:
+              - switch.is_off: main_garage_virtual_lock
+              - binary_sensor.is_on: main_garage_close_endstop_binary_sensor
+          then:
+            - switch.turn_on: main_door_relay
+    close_action:
+      - if:
+          condition:
+            - and:
+              - switch.is_off: main_garage_virtual_lock
+              - binary_sensor.is_on: main_garage_open_endstop_binary_sensor
+          then:
+            - switch.turn_on: main_door_relay
+    stop_action:
+      - if:
+          condition:
+            - and:
+              - switch.is_off: main_garage_virtual_lock
+              - binary_sensor.is_off: main_garage_close_endstop_binary_sensor
+              - binary_sensor.is_off: main_garage_open_endstop_binary_sensor
+          then:
+            - switch.turn_on: main_door_relay
+
+  - platform: template
+    id: side_garage_door
+    name: "Side Garage Door"
+    device_class: garage
+    open_action:
+        - if:
+            condition:
+              - and:
+                - switch.is_off: side_garage_virtual_lock
+                - binary_sensor.is_on: side_garage_close_endstop_binary_sensor
+            then:
+              - switch.turn_on: side_door_relay
+    close_action:
+      - if:
+          condition:
+            - and:
+              - switch.is_off: side_garage_virtual_lock
+              - binary_sensor.is_on: side_garage_open_endstop_binary_sensor
+          then:
+            - switch.turn_on: side_door_relay
+    stop_action:
+      - if:
+          condition:
+            - and:
+              - switch.is_off: side_garage_virtual_lock
+              - binary_sensor.is_off: side_garage_close_endstop_binary_sensor
+              - binary_sensor.is_off: side_garage_open_endstop_binary_sensor
+          then:
+            - switch.turn_on: side_door_relay
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: "" # TODO: fill with value
+
+ota:
+  - platform: esphome
+    password: "" # TODO: fill with value
+
+wifi:
+  power_save_mode: none
+  ssid: "" # TODO: fill with value
+  password: "" # TODO: fill with value
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Garage-Controller Fallback Wi-Fi"
+    password: "" # TODO: fill with value
+
+captive_portal:

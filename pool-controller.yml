@@ -1,0 +1,163 @@
+esphome:
+  name: pool-controller
+
+esp32:
+  board: esp32dev
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+
+switch:
+  - platform: gpio
+    pin: 25
+    id: ntc_sensor_vcc
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    id: relay_board_8
+    name: "Pump: Quick Clean"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 23
+      inverted: true
+    interlock: &pump_interlock_group [relay_board_5, relay_board_6, relay_board_7, relay_board_8]
+
+  - platform: gpio
+    id: relay_board_7
+    name: "Pump: Speed 1"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 22
+      inverted: true
+    interlock: *pump_interlock_group
+
+  - platform: gpio
+    id: relay_board_6
+    name: "Pump: Speed 2"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 21
+      inverted: true
+    interlock: *pump_interlock_group
+
+  - platform: gpio
+    id: relay_board_5
+    name: "Pump: Speed 3"
+    restore_mode: RESTORE_DEFAULT_ON
+    pin:
+      number: 19
+      inverted: true
+    interlock: *pump_interlock_group
+
+  - platform: gpio
+    id: relay_board_4
+    name: "Spa Heater"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 18
+      inverted: true
+
+  - platform: gpio
+    id: relay_board_3
+    name: "Pool Lights"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 4
+      inverted: true
+
+  - platform: gpio
+    id: relay_board_2
+    name: "Spa Intake"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 27
+      inverted: true
+
+  - platform: gpio
+    id: relay_board_1
+    name: "Spa Output"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: 13
+      inverted: true
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+  - platform: ntc
+    sensor: air_resistance_sensor
+    name: "Air Temperature"
+    calibration:
+      b_constant: 3977
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+
+  - platform: resistance
+    sensor: air_adc_sensor
+    configuration: UPSTREAM
+    resistor: 9.75kOhm
+    id: air_resistance_sensor
+
+  - platform: adc
+    id: air_adc_sensor
+    pin: 33
+    attenuation: 12db
+    update_interval: never
+    samples: 50
+    sampling_mode: avg
+
+  - platform: ntc
+    sensor: water_resistance_sensor
+    name: "Water Temperature"
+    calibration:
+      b_constant: 3977
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+
+  - platform: resistance
+    sensor: water_adc_sensor
+    configuration: UPSTREAM
+    resistor: 9.0kOhm # old: 9.7kOhm
+    id: water_resistance_sensor
+
+  - platform: adc
+    id: water_adc_sensor
+    pin: 32
+    attenuation: 12db
+    update_interval: never
+    samples: 50
+    sampling_mode: avg
+
+interval:
+  - interval: 5s
+    then:
+      - switch.turn_on: ntc_sensor_vcc
+      - component.update: air_adc_sensor
+      - component.update: water_adc_sensor
+      - switch.turn_off: ntc_sensor_vcc
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: "" # TODO: fill with value
+
+ota:
+  - platform: esphome
+    password: "" # TODO: fill with value
+
+wifi:
+  power_save_mode: none
+  ssid: "" # TODO: fill with value
+  password: "" # TODO: fill with value
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Pool-Controller Fallback Hotspot"
+    password: "" # TODO: fill with value
+
+captive_portal:
+    

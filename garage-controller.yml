@@ -1,25 +1,26 @@
 esphome:
   name: garage-controller
 
-esp8266:
-  board: nodemcuv2
+esp32:
+  board: esp32dev
+  cpu_frequency: 240MHz
   framework:
-    version: recommended
+    type: esp-idf
 
 switch:
   - platform: template
     name: "Main Garage Virtual Lock"
     id: main_garage_virtual_lock
     optimistic: true
-    internal: true
+    internal: false
 
   - platform: gpio
     id: main_door_relay
     name: "Main Garage Door"
     restore_mode: RESTORE_DEFAULT_OFF
-    internal: true
+    internal: false
     pin:
-      number: D3
+      number: 27
     on_turn_on:
       - delay: 250ms
       - switch.turn_off: main_door_relay
@@ -28,15 +29,15 @@ switch:
     name: "Side Garage Virtual Lock"
     id: side_garage_virtual_lock
     optimistic: true
-    internal: true
+    internal: false
 
   - platform: gpio
     id: side_door_relay
     name: "Side Garage Door"
     restore_mode: RESTORE_DEFAULT_OFF
-    internal: true
+    internal: false
     pin:
-      number: D7
+      number: 14
     on_turn_on:
       - delay: 250ms
       - switch.turn_off: side_door_relay
@@ -54,7 +55,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: D1
+      number: 26
       inverted: true
       mode:
         input: true
@@ -91,7 +92,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: D2
+      number: 25
       inverted: true
       mode:
         input: true
@@ -132,7 +133,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: D5
+      number: 33
       inverted: true
       mode:
         input: true
@@ -169,7 +170,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: D6
+      number: 32
       inverted: true
       mode:
         input: true
@@ -269,7 +270,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: "" # TODO: fill with value
+  encryption:
+    key: "" # TODO: fill with value
 
 ota:
   - platform: esphome
@@ -277,7 +279,7 @@ ota:
 
 wifi:
   power_save_mode: none
-  ssid: "" # TODO: fill with value
+  ssid: "Simons IoT"
   password: "" # TODO: fill with value
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
